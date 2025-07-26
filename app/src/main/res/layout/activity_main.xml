@@ -1,20 +1,52 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:padding="16dp">
 
-    <TextView
-        android:id="@+id/tvBalance"
+    <!-- Горизонтальные балансы -->
+    <LinearLayout
+        android:id="@+id/top_balances"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:text="Баланс: - BYN"/>
+        android:orientation="horizontal"
+        android:layout_alignParentTop="true">
 
+        <TextView
+            android:id="@+id/tvBalanceCart"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Карта: - BYN"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvBalanceCash"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="Наличные: - BYN"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Список транзакций -->
     <ListView
         android:id="@+id/lvTransactions"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_marginTop="16dp"/>
-</LinearLayout>
+        android:layout_height="0dp"
+        android:layout_below="@id/top_balances"
+        android:layout_above="@+id/button"
+        android:layout_marginTop="8dp" />
+
+    <!-- Кнопка фиксированная внизу -->
+    <Button
+        android:id="@+id/button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Добавить"
+        android:layout_alignParentBottom="true"
+        android:layout_marginTop="8dp" />
+</RelativeLayout>

@@ -1,3 +1,28 @@
 <resources>
     <string name="app_name">testsms</string>
+
+    <string-array name="categories_default">
+        <item>Еда</item>
+        <item>Транспорт</item>
+        <item>Развлечения</item>
+        <item>Другое</item>
+    </string-array>
+
+    <string-array name="categories_income">
+        <item>Зарплата</item>
+        <item>Подарок</item>
+        <item>Возврат</item>
+        <item>Другое</item>
+    </string-array>
+
+
+    <string-array name="operation_types">
+        <item>Платеж</item>
+        <item>Пополнение</item>
+    </string-array>
+
+    <string-array name="balance_types">
+        <item>Карта</item>
+        <item>Наличка</item>
+    </string-array>
 </resources>

@@ -1,0 +1,87 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#4A3F3D"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:orientation="horizontal"
+        android:background="#FFD131"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <!-- Левая секция с весом 2 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:background="#FFD131">
+
+            <ImageView
+                android:id="@+id/backButton"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                android:src="@drawable/ic_back" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#4A3F3D" />
+
+        <!-- Центральная секция с весом 3 -->
+        <LinearLayout
+            android:id="@+id/centerSection"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:gravity="center"
+            android:background="#FFD131" />
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#4A3F3D" />
+
+        <!-- Правая секция с фиксированной шириной -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="4"
+            android:gravity="center"
+            android:background="#FFD131" />
+    </LinearLayout>
+
+
+    <ImageView
+        android:id="@+id/mailIcon"
+        android:layout_width="50dp"
+        android:layout_height="30dp"
+        android:src="@drawable/ic_tipe"
+        android:background="@android:color/white"
+        android:layout_marginTop="50dp"
+        android:elevation="6dp"
+        android:padding="4dp"
+        android:visibility="invisible"/>
+
+    <!-- Полоски под верхней панелью -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/topBar"
+        android:orientation="vertical">
+
+        <View android:layout_width="match_parent" android:layout_height="125dp" android:background="#4A3F3D" />
+        <View android:layout_width="match_parent" android:layout_height="100dp" android:background="#FFD131" />
+        <View android:layout_width="match_parent" android:layout_height="125dp" android:background="#4A3F3D" />
+        <View android:layout_width="match_parent" android:layout_height="100dp" android:background="#FFD131" />
+        <View android:layout_width="match_parent" android:layout_height="125dp" android:background="#4A3F3D" />
+        <View android:layout_width="match_parent" android:layout_height="100dp" android:background="#FFD131" />
+    </LinearLayout>
+
+</RelativeLayout>

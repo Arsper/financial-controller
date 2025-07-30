@@ -1,4 +1,4 @@
-package com.example.testsms;
+package com.example.testsms.db;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -9,6 +9,9 @@ import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
+
+import com.example.testsms.R;
+import com.example.testsms.model.TransactionInfo;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -84,18 +87,18 @@ public class TransactionDialog {
                 existing.category
         );
 
-        // При редактировании сразу установим тип и категорию
         if (!isNew) {
-            int typePos = typeAdapter.getPosition(info.type);
-            spinnerType.setSelection(typePos);
-            etAmount.setText(info.amount);
-
             boolean isIncome = info.type.equals("Пополнение") || info.type.equals("Начисление");
             spinnerCategory.setAdapter(isIncome ? catAdapterIncome : catAdapterDefault);
 
             int catPos = (isIncome ? catAdapterIncome : catAdapterDefault)
                     .getPosition(info.category);
             spinnerCategory.setSelection(catPos);
+
+            int typePos = typeAdapter.getPosition(info.type);
+            spinnerType.setSelection(typePos);
+
+            etAmount.setText(info.amount);
         }
 
         String title = isNew ? "Новая транзакция" : "Редактировать транзакцию";
@@ -113,23 +116,15 @@ public class TransactionDialog {
                     double amount = Double.parseDouble(amtText);
                     boolean expense = type.equals("Платеж") || type.equals("Списание");
 
-                    double newBal;
                     if (isNew) {
-                        newBal = currentBalance + (expense ? -amount : amount);
                         info.date = new SimpleDateFormat(
                                 "dd.MM.yyyy HH:mm:ss", Locale.getDefault()
                         ).format(new Date());
-                    } else {
-                        double oldAmt = Double.parseDouble(existing.amount);
-                        boolean wasExp = existing.type.equals("Платеж") || existing.type.equals("Списание");
-                        newBal = currentBalance
-                                + (wasExp ? oldAmt : -oldAmt)
-                                + (expense ? -amount : amount);
                     }
 
                     info.type     = type;
                     info.amount   = String.format(Locale.US, "%.2f", amount);
-                    info.balance  = String.format(Locale.US, "%.2f", newBal);
+                    info.balance = "0.00";
                     info.category = category;
                     info.balanceType = spinnerBalanceType.getSelectedItem().toString();
 

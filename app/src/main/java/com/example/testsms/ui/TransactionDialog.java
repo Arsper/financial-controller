@@ -1,4 +1,4 @@
-package com.example.testsms.db;
+package com.example.testsms.ui;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -36,6 +36,7 @@ public class TransactionDialog {
         TextView tvCategoryLabel= dialogView.findViewById(R.id.tvCategoryLabel);
         Spinner spinnerCategory = dialogView.findViewById(R.id.spinnerCategory);
         Spinner spinnerBalanceType = dialogView.findViewById(R.id.spinnerBalanceType);
+        Spinner spinnerCurrency = dialogView.findViewById(R.id.spinnerCurrency); // добавлен спиннер для валюты
 
         // Адаптеры
         ArrayAdapter<CharSequence> balanceAdapter = ArrayAdapter.createFromResource(
@@ -57,6 +58,12 @@ public class TransactionDialog {
                 ctx, R.array.categories_income, android.R.layout.simple_spinner_item);
         catAdapterIncome.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 
+        // Новый адаптер для валюты
+        ArrayAdapter<CharSequence> currencyAdapter = ArrayAdapter.createFromResource(
+                ctx, R.array.currency_array, android.R.layout.simple_spinner_item);
+        currencyAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerCurrency.setAdapter(currencyAdapter);
+
         // Показывать нужный список категорий в зависимости от типа
         spinnerType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -65,7 +72,6 @@ public class TransactionDialog {
                 String sel = (String) parent.getItemAtPosition(position);
                 boolean isIncome = sel.equals("Пополнение") || sel.equals("Начисление");
 
-                // Просто меняем адаптер без скрытия
                 spinnerCategory.setAdapter(isIncome
                         ? catAdapterIncome
                         : catAdapterDefault);
@@ -82,9 +88,14 @@ public class TransactionDialog {
         final TransactionInfo info = isNew
                 ? new TransactionInfo()
                 : new TransactionInfo(
-                existing.type, existing.amount,
-                existing.balance, existing.date,
-                existing.category
+                existing.id,
+                existing.type,
+                existing.amount,
+                existing.balance,
+                existing.date,
+                existing.balanceType,
+                existing.category,
+                existing.currency
         );
 
         if (!isNew) {
@@ -93,12 +104,23 @@ public class TransactionDialog {
 
             int catPos = (isIncome ? catAdapterIncome : catAdapterDefault)
                     .getPosition(info.category);
-            spinnerCategory.setSelection(catPos);
+            if (catPos >= 0) spinnerCategory.setSelection(catPos);
 
             int typePos = typeAdapter.getPosition(info.type);
-            spinnerType.setSelection(typePos);
+            if (typePos >= 0) spinnerType.setSelection(typePos);
 
             etAmount.setText(info.amount);
+
+            int balancePos = balanceAdapter.getPosition(info.balanceType);
+            if (balancePos >= 0) spinnerBalanceType.setSelection(balancePos);
+
+            // Установка выбранной валюты
+            int currencyPos = currencyAdapter.getPosition(info.currency);
+            if (currencyPos >= 0) spinnerCurrency.setSelection(currencyPos);
+        } else {
+            // Для новой транзакции по умолчанию выбрать BYN, если есть в списке
+            int defaultCurrencyPos = currencyAdapter.getPosition("BYN");
+            if (defaultCurrencyPos >= 0) spinnerCurrency.setSelection(defaultCurrencyPos);
         }
 
         String title = isNew ? "Новая транзакция" : "Редактировать транзакцию";
@@ -114,7 +136,6 @@ public class TransactionDialog {
                     String category = spinnerCategory.getSelectedItem().toString();
 
                     double amount = Double.parseDouble(amtText);
-                    boolean expense = type.equals("Платеж") || type.equals("Списание");
 
                     if (isNew) {
                         info.date = new SimpleDateFormat(
@@ -127,6 +148,9 @@ public class TransactionDialog {
                     info.balance = "0.00";
                     info.category = category;
                     info.balanceType = spinnerBalanceType.getSelectedItem().toString();
+
+                    // Сохраняем выбранную валюту
+                    info.currency = spinnerCurrency.getSelectedItem().toString();
 
                     cb.onSaved(info, isNew);
                 })

@@ -3,91 +3,233 @@ package com.example.testsms;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
-import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.room.Room;
+
+import com.example.testsms.db.AppDatabase;
+import com.example.testsms.db.TransactionEntity;
+import com.example.testsms.model.TransactionInfo;
+import com.example.testsms.sms.SmsHelper;
+import com.example.testsms.sms.SmsParser;
+import com.example.testsms.ui.BalanceDialog;
+import com.example.testsms.ui.TransactionAdapter;
+import com.example.testsms.ui.TransactionDialog;
+import com.example.testsms.util.TransactionUtils;
 
 import java.util.ArrayList;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
+
     private static final int SMS_PERMISSION_CODE = 101;
-    private static final long UPDATE_INTERVAL = 300_000; // 5 минут
+    private static final long UPDATE_INTERVAL = 300_000;
+
+    private AppDatabase db;
+    private SmsHelper smsHelper;
+    private Handler handler = new Handler();
 
     private ListView lvTransactions;
-    private TextView tvBalanceCart;
-    private TextView tvBalanceCash;
-    private Button btnAdd;
+    private TextView tvBalanceTotal;
+    private ImageButton btnAdd;
+    private LinearLayout balanceContainer;
 
+    private ArrayList<TransactionInfo> allTransactions = new ArrayList<>();
+    private ArrayList<TransactionInfo> filteredTransactions = new ArrayList<>();
     private TransactionAdapter adapter;
-    private ArrayList<TransactionInfo> transactionInfos;
-    private Handler handler = new Handler();
-    private String lastSmsId = "";
 
     private double balanceCart = 0.0;
     private double balanceCash = 0.0;
+    private double balanceTotal = 0.0;
+    private String lastSmsId = "";
 
-    private final String[] ALLOWED_SENDERS = {"ASB.BY"};
+    private TextView textCurrency;
+    private String[] currencies;
+
+    // Текущая выбранная валюта
+    private String currentCurrency = "BYN";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        currencies = getResources().getStringArray(R.array.currency_array);
 
-        lvTransactions   = findViewById(R.id.lvTransactions);
-        tvBalanceCart    = findViewById(R.id.tvBalanceCart);
-        tvBalanceCash    = findViewById(R.id.tvBalanceCash);
-        btnAdd           = findViewById(R.id.button);
 
-        transactionInfos = new ArrayList<>();
-        adapter          = new TransactionAdapter(this, transactionInfos);
+        textCurrency = findViewById(R.id.textCurrency);
+        lvTransactions = findViewById(R.id.lvTransactions);
+        tvBalanceTotal = findViewById(R.id.tvBalanceTotal);
+        btnAdd = findViewById(R.id.buttonAdd);
+        balanceContainer = findViewById(R.id.balanceContainer);
+
+        db = Room.databaseBuilder(getApplicationContext(),
+                        AppDatabase.class, "transaction-db")
+                .fallbackToDestructiveMigration()
+                .allowMainThreadQueries()
+                .build();
+
+        smsHelper = new SmsHelper(this);
+
+        adapter = new TransactionAdapter(this, filteredTransactions);
         lvTransactions.setAdapter(adapter);
 
-        // Добавление новой транзакции
-        btnAdd.setOnClickListener(v -> {
-            // По умолчанию показываем баланс карты
-            TransactionDialog.show(this, null, balanceCart, (info, isNew) -> onTransactionSaved(info, isNew));
-        });
-
-
-        // Редактирование по клику
-        lvTransactions.setOnItemClickListener((p, view, pos, id) -> {
-            TransactionInfo existing = transactionInfos.get(pos);
-            double selectedBalance = "Карта".equals(existing.balanceType)
-                    ? balanceCart
-                    : balanceCash;
-
-            TransactionDialog.show(this, existing, selectedBalance, (info, isNew) -> onTransactionSaved(info, isNew));
-        });
-
+        initViews();
+        loadTransactionsFromDb();
         checkSmsPermission();
+        setupCurrencySelector();
     }
 
-    private void onTransactionSaved(TransactionInfo info, boolean isNew) {
-        double balance = Double.parseDouble(info.balance);
+    private void initViews() {
+        btnAdd.setOnClickListener(v ->
+                TransactionDialog.show(this, null, 0.0, this::onTransactionSaved));
 
-        if ("Карта".equals(info.balanceType)) {
-            balanceCart = balance;
-            tvBalanceCart.setText("Карта: " + String.format("%.2f BYN", balanceCart));
-        } else {
-            balanceCash = balance;
-            tvBalanceCash.setText("Наличные: " + String.format("%.2f BYN", balanceCash));
+        balanceContainer.setOnClickListener(v -> {
+            BalanceDialog.show(
+                    this,
+                    balanceTotal,
+                    balanceCart,
+                    balanceCash,
+                    currentCurrency,
+                    newCurrency -> {
+                        currentCurrency = newCurrency;
+                        textCurrency.setText(newCurrency);
+                        filterTransactionsByCurrency(); // если нужно
+                    },
+                    currency -> getConvertedBalance(currency) // реализация ниже
+            );
+        });
+    }
+    private double[] getConvertedBalance(String currency) {
+        return new double[]{balanceTotal, balanceCart, balanceCash};
+    }
+
+
+    private void setupCurrencySelector() {
+        // Устанавливаем начальную валюту
+        textCurrency.setText(currentCurrency);
+
+        textCurrency.setOnClickListener(v -> {
+            AlertDialog.Builder builder = new AlertDialog.Builder(this);
+            builder.setTitle("Выберите валюту");
+            builder.setItems(currencies, (dialog, which) -> {
+                currentCurrency = currencies[which];
+                textCurrency.setText(currentCurrency);
+                filterTransactionsByCurrency();
+            });
+            builder.show();
+        });
+    }
+
+    private void loadTransactionsFromDb() {
+        List<TransactionEntity> saved = db.transactionDao().getAll();
+
+        allTransactions.clear();
+        for (TransactionEntity e : saved) {
+            allTransactions.add(new TransactionInfo(e));
         }
 
-        if (isNew) transactionInfos.add(0, info);
+        filterTransactionsByCurrency();
+
+        lastSmsId = smsHelper.loadLastSmsId();
+    }
+
+    // Фильтруем транзакции по выбранной валюте, пересчитываем баланс и обновляем UI
+    private void filterTransactionsByCurrency() {
+        filteredTransactions.clear();
+
+        // Фильтрация по валюте
+        for (TransactionInfo t : allTransactions) {
+            if (t.currency != null && t.currency.equals(currentCurrency)) {
+                filteredTransactions.add(t);
+            }
+        }
+
+        recalculateBalancesAndRefreshUI();
+    }
+
+    private void recalculateBalancesAndRefreshUI() {
+        balanceCart = 0.0;
+        balanceCash = 0.0;
+
+        // Сортируем по дате (от старой к новой)
+        Collections.sort(filteredTransactions, (a, b) -> a.date.compareTo(b.date));
+
+        for (TransactionInfo t : filteredTransactions) {
+            double amount = Double.parseDouble(t.amount);
+            if (t.type.equals("Пополнение") || t.type.equals("Начисление")) {
+                if ("Карта".equals(t.balanceType)) {
+                    balanceCart += amount;
+                } else {
+                    balanceCash += amount;
+                }
+            } else if (t.type.equals("Списание") && "Карта".equals(t.balanceType) && "Перевод на Наличку".equals(t.category)) {
+                balanceCart -= amount;
+                balanceCash += amount;
+            } else {
+                if ("Карта".equals(t.balanceType)) {
+                    balanceCart -= amount;
+                } else {
+                    balanceCash -= amount;
+                }
+            }
+            if ("Карта".equals(t.balanceType)) {
+                t.balance = String.format(Locale.US, "%.2f", balanceCart);
+            } else {
+                t.balance = String.format(Locale.US, "%.2f", balanceCash);
+            }
+        }
+
+        balanceTotal = balanceCart + balanceCash;
+        tvBalanceTotal.setText(String.format(Locale.US, "%.2f %s", balanceTotal, currentCurrency));
+
+        // Отображаем транзакции с самой новой сверху
+        TransactionUtils.sortTransactions(filteredTransactions);
         adapter.notifyDataSetChanged();
     }
 
+    private void onTransactionSaved(TransactionInfo info, boolean isNew) {
+        if (!isNew) {
+            // Обновляем существующую транзакцию
+            for (TransactionInfo t : allTransactions) {
+                if (t.date.equals(info.date)) {
+                    info.id = t.id;
+                    break;
+                }
+            }
+        }
+
+        TransactionEntity entity = new TransactionEntity(info);
+
+        if (isNew) {
+            long newId = db.transactionDao().insert(entity);
+            info.id = (int) newId;
+            allTransactions.add(info);
+        } else {
+            db.transactionDao().update(entity);
+            for (int i = 0; i < allTransactions.size(); i++) {
+                if (allTransactions.get(i).date.equals(info.date)) {
+                    allTransactions.set(i, info);
+                    break;
+                }
+            }
+        }
+
+        filterTransactionsByCurrency();
+    }
 
     private void checkSmsPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
@@ -98,6 +240,77 @@ public class MainActivity extends AppCompatActivity {
                     new String[]{Manifest.permission.READ_SMS},
                     SMS_PERMISSION_CODE);
         }
+    }
+
+    private void initSmsMonitoring() {
+        loadLatestSms();
+        startPeriodicUpdates();
+    }
+
+    private void loadLatestSms() {
+        try (Cursor cursor = smsHelper.getLatestSms()) {
+            if (cursor != null && cursor.moveToFirst()) {
+                String address = cursor.getString(1);
+                String smsId = cursor.getString(0);
+                if (smsHelper.isAllowedSender(address) && !lastSmsId.equals(smsId)) {
+                    lastSmsId = smsId;
+                    smsHelper.saveLastSmsId(lastSmsId);
+                    processAndStore(cursor);
+                }
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Ошибка чтения SMS: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void startPeriodicUpdates() {
+        handler.postDelayed(() -> {
+            checkForNewMessages();
+            handler.postDelayed(this::startPeriodicUpdates, UPDATE_INTERVAL);
+        }, UPDATE_INTERVAL);
+    }
+
+    private void checkForNewMessages() {
+        try (Cursor cursor = smsHelper.getNewMessages(lastSmsId)) {
+            if (cursor != null) {
+                boolean hasNewMessages = false;
+                while (cursor.moveToNext()) {
+                    String address = cursor.getString(1);
+                    if (smsHelper.isAllowedSender(address)) {
+                        processAndStore(cursor);
+                        hasNewMessages = true;
+                    }
+                }
+
+                if (hasNewMessages && cursor.moveToLast()) {
+                    lastSmsId = cursor.getString(0);
+                    smsHelper.saveLastSmsId(lastSmsId);
+                }
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Ошибка проверки SMS: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void processAndStore(Cursor cursor) {
+        String body = cursor.getString(2);
+        TransactionInfo info = SmsParser.parse(body);
+        info.balanceType = "Карта"; // SMS-транзакции обычно относятся к карте
+
+        // Проверяем на дубликаты по дате
+        for (TransactionInfo t : allTransactions) {
+            if (t.date.equals(info.date)) return;
+        }
+
+        // Если у транзакции нет валюты, ставим текущую валюту по умолчанию
+        if (info.currency == null || info.currency.isEmpty()) {
+            info.currency = currentCurrency;
+        }
+
+        db.transactionDao().insert(new TransactionEntity(info));
+        allTransactions.add(info);
+
+        filterTransactionsByCurrency();
     }
 
     @Override
@@ -114,104 +327,5 @@ public class MainActivity extends AppCompatActivity {
                     "Для работы нужно разрешение на чтение SMS",
                     Toast.LENGTH_LONG).show();
         }
-    }
-
-    private void initSmsMonitoring() {
-        loadLatestSms();
-        startPeriodicUpdates();
-    }
-
-    private void startPeriodicUpdates() {
-        handler.postDelayed(() -> {
-            checkForNewMessages();
-            handler.postDelayed(this::startPeriodicUpdates, UPDATE_INTERVAL);
-        }, UPDATE_INTERVAL);
-    }
-
-    private void loadLatestSms() {
-        try (Cursor cursor = getContentResolver().query(
-                Uri.parse("content://sms/inbox"),
-                new String[]{"_id", "address", "body", "date"},
-                null, null,
-                "date DESC")) {
-
-            if (cursor != null) {
-                while (cursor.moveToNext()) {
-                    String address = cursor.getString(1);
-                    if (isAllowedSender(address)) {
-                        lastSmsId = cursor.getString(0);
-                        processAndStore(cursor);
-                        break;
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Toast.makeText(this, "Ошибка чтения SMS: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void checkForNewMessages() {
-        try (Cursor cursor = getContentResolver().query(
-                Uri.parse("content://sms/inbox"),
-                new String[]{"_id", "address", "body", "date"},
-                null, null,
-                "date DESC")) {
-
-            if (cursor != null && cursor.moveToFirst()) {
-                String currentId = cursor.getString(0);
-                if (!currentId.equals(lastSmsId)) {
-                    processAndStore(cursor);
-                }
-            }
-        } catch (Exception e) {
-            Toast.makeText(this, "Ошибка проверки SMS: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void processAndStore(Cursor cursor) {
-        lastSmsId = cursor.getString(0);
-        String address = cursor.getString(1);
-        String body = cursor.getString(2);
-        if (!isAllowedSender(address)) return;
-
-        TransactionInfo info = parseTransaction(body);
-
-        // по умолчанию SMS считаем по "Карта"
-        info.balanceType = "Карта";
-
-        onTransactionSaved(info, true);
-    }
-
-    private boolean isAllowedSender(String address) {
-        if (address == null) return false;
-        for (String s : ALLOWED_SENDERS) {
-            if (address.contains(s)) return true;
-        }
-        return false;
-    }
-
-    private TransactionInfo parseTransaction(String body) {
-        TransactionInfo info = new TransactionInfo();
-
-        // Тип
-        if (body.contains("OPLATA"))        info.type = "Платеж";
-        else if (body.contains("POPOLNENIE")) info.type = "Пополнение";
-        else if (body.contains("SPISANIE"))   info.type = "Списание";
-        else if (body.contains("ZACHISLENIE"))info.type = "Начисление";
-        else info.type = "Другая";
-
-        // Сумма и баланс
-        Pattern p = Pattern.compile("(\\d+\\.\\d{2}) BYN");
-        Matcher m = p.matcher(body);
-        if (m.find()) info.amount = m.group(1);
-        if (m.find()) info.balance = m.group(1);
-
-        // Дата
-        p = Pattern.compile("DATA (\\d{2}\\.\\d{2}\\.\\d{4} \\d{2}:\\d{2}:\\d{2})");
-        m = p.matcher(body);
-        info.date = m.find() ? m.group(1) : "";
-
-        info.category = "Другое";
-        return info;
     }
 }

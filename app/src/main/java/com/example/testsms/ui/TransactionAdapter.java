@@ -1,4 +1,4 @@
-package com.example.testsms;
+package com.example.testsms.ui;
 
 import android.content.Context;
 import android.graphics.Color; // Импорт для работы с цветами
@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
+import com.example.testsms.R;
 import com.example.testsms.model.TransactionInfo;
 
 import java.text.SimpleDateFormat;

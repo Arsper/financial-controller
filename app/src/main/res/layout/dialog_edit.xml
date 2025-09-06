@@ -3,6 +3,16 @@
     android:orientation="vertical" android:padding="24dp"
     android:layout_width="match_parent" android:layout_height="wrap_content">
 
+    <TextView
+        android:text="Описание"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <EditText
+        android:id="@+id/etDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:inputType="textCapSentences"
+        android:padding="8dp"/>
     <!-- Тип баланса -->
     <TextView
         android:text="Тип баланса"
@@ -12,7 +22,10 @@
         android:id="@+id/spinnerBalanceType"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
-
+    <TextView
+        android:text="Тип валютыу"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
     <Spinner
         android:id="@+id/spinnerCurrency"
         android:layout_width="match_parent"

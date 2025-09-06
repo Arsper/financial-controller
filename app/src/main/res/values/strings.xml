@@ -20,6 +20,33 @@
         <item>Другое</item>
     </string-array>
 
+    <string-array name="categories_static">
+        <item>Все</item>
+        <item>Долг</item>
+        <item>Еда</item>
+        <item>Одежда</item>
+        <item>Дом</item>
+        <item>Быт</item>
+        <item>Транспорт</item>
+        <item>Подарки</item>
+        <item>Зарплата</item>
+        <item>Аванс</item>
+        <item>Подарок</item>
+        <item>Возврат</item>
+        <item>Другое</item>
+    </string-array>
+
+    <string-array name="period">
+        <item>Неделя</item>
+        <item>Месяц</item>
+        <item>Весь период</item>
+    </string-array>
+
+    <string-array name="operation_types_card">
+        <item>Платеж</item>
+        <item>Пополнение</item>
+        <item>Списание</item>
+    </string-array>
 
     <string-array name="operation_types">
         <item>Платеж</item>
@@ -31,11 +58,12 @@
         <item>Наличка</item>
     </string-array>
 
-    <string-array name="currency_array">
-        <item>BYN</item>
-        <item>USD</item>
-        <item>EUR</item>
-        <item>RUB</item>
+        <string-array name="currency_array">
+            <item>BYN</item>
+            <item>USD</item>
+            <item>EUR</item>
+            <item>RUB</item>
+            <item>KZT</item>>
     </string-array>
 
 

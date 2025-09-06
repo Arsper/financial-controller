@@ -37,7 +37,7 @@ public class SmsHelper {
                 Uri.parse("content://sms/inbox"),
                 new String[]{"_id", "address", "body", "date"},
                 "_id > ?", new String[]{lastSmsId},
-                "_id DESC"
+                "_id ASC"
         );
     }
 

@@ -21,6 +21,9 @@ public class TransactionAdapter extends ArrayAdapter<TransactionInfo> {
     private Context mContext;
 
     private static final SimpleDateFormat DAY_FORMAT =
+            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+
+    private static final SimpleDateFormat HEADER_FORMAT =
             new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
 
     public TransactionAdapter(Context context, List<TransactionInfo> items) {
@@ -43,6 +46,7 @@ public class TransactionAdapter extends ArrayAdapter<TransactionInfo> {
         if (transaction != null) {
             TextView tvDateHeader = view.findViewById(R.id.tvTransactionDateHeader);
             TextView tvAmount = view.findViewById(R.id.tvTransactionAmount);
+            TextView tvDescription = view.findViewById(R.id.tvTransactionDescription);
             TextView tvCategory = view.findViewById(R.id.tvTransactionCategory); // Новый ID
 
             // --- Логика отображения даты (без изменений) ---
@@ -59,10 +63,15 @@ public class TransactionAdapter extends ArrayAdapter<TransactionInfo> {
                 }
             }
 
-            if (!currentDay.equals(previousDay) || position == 0) {
-                tvDateHeader.setText(currentDay);
-                tvDateHeader.setVisibility(View.VISIBLE);
+            if (transaction.getDateObject() != null) {
+                if (!currentDay.equals(previousDay) || position == 0) {
+                    tvDateHeader.setText(HEADER_FORMAT.format(transaction.getDateObject()));
+                    tvDateHeader.setVisibility(View.VISIBLE);
+                } else {
+                    tvDateHeader.setVisibility(View.GONE);
+                }
             } else {
+                // если дата пустая — скрываем заголовок, чтобы не падало
                 tvDateHeader.setVisibility(View.GONE);
             }
             // --- Конец логики отображения даты ---
@@ -88,6 +97,7 @@ public class TransactionAdapter extends ArrayAdapter<TransactionInfo> {
             }
             tvAmount.setText(amountText);
             tvAmount.setTextColor(amountColor); // Устанавливаем цвет суммы
+            tvDescription.setText(transaction.description != null ? transaction.description : "");
         }
         return view;
     }

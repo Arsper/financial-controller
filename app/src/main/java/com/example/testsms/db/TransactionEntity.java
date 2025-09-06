@@ -12,6 +12,7 @@ public class TransactionEntity {
     public int id;
 
     public String type;
+    public String description;
     public String amount;
     public String balance;
     public String date;
@@ -29,6 +30,7 @@ public class TransactionEntity {
         this.balanceType = info.balanceType;
         this.category = info.category;
         this.currency = info.currency;
+        this.description = info.description;
     }
 
     // Пустой конструктор

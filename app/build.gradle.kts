@@ -32,6 +32,7 @@ android {
 }
 
 dependencies {
+    implementation("com.github.PhilJay:MPAndroidChart:3.1.0")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation(libs.room.common.jvm)
     annotationProcessor("androidx.room:room-compiler:2.6.1")

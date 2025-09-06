@@ -9,6 +9,7 @@ import java.util.Locale;
 
 public class TransactionInfo {
     public int id;
+    public String description;
     public String type;
     public String amount;
     public String balance;
@@ -33,9 +34,10 @@ public class TransactionInfo {
     }
 
     // Полный конструктор
-    public TransactionInfo(int id, String type, String amount, String balance, String date,
-                           String balanceType, String category, String currency) {
+    public TransactionInfo(int id, String description, String type, String amount, String balance,
+                           String date, String balanceType, String category, String currency) {
         this.id = id;
+        this.description = description;
         this.type = type;
         this.amount = amount;
         this.balance = balance;
@@ -45,26 +47,30 @@ public class TransactionInfo {
         this.currency = currency;
     }
 
+
     // Конструктор из TransactionEntity (для загрузки из БД)
     public TransactionInfo(TransactionEntity e) {
         this.id = e.id;
+        this.description = e.description;
         this.type = e.type;
         this.amount = e.amount;
         this.balance = e.balance;
         this.date = e.date;
         this.balanceType = e.balanceType;
         this.category = e.category;
-        this.currency = e.currency; // ← добавлено
+        this.currency = e.currency;
     }
 
     // Преобразование строки даты в Date
     public Date getDateObject() {
-        if (date == null || date.isEmpty()) return null;
+        if (date == null || date.isEmpty()) {
+            return new Date(); // текущая дата вместо null
+        }
         try {
             return DATE_FORMAT.parse(date);
         } catch (ParseException e) {
             e.printStackTrace();
-            return null;
+            return new Date(); // если не получилось распарсить — тоже текущая
         }
     }
 }
